@@ -30,6 +30,7 @@ module ic
         u = zeros(Nx + 1, Ny)
         v = zeros(Nx, Ny + 1)
         u[:, Ny] .= U_lid
+
         p = zeros(Nx, Ny)
         
         u_star = zeros(Nx + 1, Ny)

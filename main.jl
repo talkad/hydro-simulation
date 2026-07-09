@@ -12,7 +12,6 @@ include("initial_condition.jl");            using .ic
 include("boundary_condition/bc.jl");        using .bc
 include("time_discretization/bdf2.jl");          using .bdf2
 include("time_discretization/first_order.jl");   using .first_order
-include("pressure_solver/piso.jl");         using .piso
 include("pressure_solver/simple.jl");         using .simple
 include("plot.jl");                         using .plot_utils
 
@@ -32,7 +31,6 @@ end
 
 function main()
     # Set simulation parameters
-    pressure_solver = "simple"
     time_discretization = "bdf2"
 
     Nx, Ny  = 124, 124
@@ -48,17 +46,22 @@ function main()
     grid, u, v, p = initial_condition(Nx, Ny; domain_size=(L, L), U_lid=U_lid)
     dt = calculate_stable_dt(u, v, grid, nu)
 
-    solver = pressure_solver == "simple" ? simple.solver : piso.solver
+    solver = simple.solver
 
     # Define common operators
     n_u = Ny * (Nx + 1)
     n_v = (Ny + 1) * Nx
     ops = utils.Operators(Nx, Ny, grid.dx, grid.dy)
-    A_u = time_discretization=="first_order" ? sparse(I, n_u, n_u) - dt * nu * ops.L_u : sparse(I, n_u, n_u) - 2dt / 3 * nu * ops.L_u
-    A_v = time_discretization=="first_order" ? sparse(I, n_v, n_v) - dt * nu * ops.L_v : sparse(I, n_v, n_v) - 2dt / 3 * nu * ops.L_v
-    # Pre-factorize the matrices for efficiency
-    F_u = lu(A_u)
-    F_v = lu(A_v)
+
+    A_u_1 = sparse(I, n_u, n_u) - dt * nu * ops.L_u
+    A_v_1 = sparse(I, n_v, n_v) - dt * nu * ops.L_v
+    Fu_1 = lu(A_u_1)
+    Fv_1 = lu(A_v_1)
+
+    A_u_2 = sparse(I, n_u, n_u) - 2dt / 3 * nu * ops.L_u
+    A_v_2 = sparse(I, n_v, n_v) - 2dt / 3 * nu * ops.L_v
+    Fu_2 = lu(A_u_2)
+    Fv_2 = lu(A_v_2)
 
     # Time-stepping loop
     t    = 0.0
@@ -70,16 +73,19 @@ function main()
     while t < total_time
 
         if time_discretization == "first_order" || step == 0
-            u_star, v_star = first_order.intermediate_velocity(u, v, p, ops, Nx, Ny, dt, rho, F_u, F_v)
+            Fu = Fu_1; Fv = Fv_1
+            u_star, v_star = first_order.intermediate_velocity(u, v, p, ops, Nx, Ny, dt, rho, Fu_1, Fv_1)
         else
-            u_star, v_star = bdf2.intermediate_velocity(u, u_prev, v, v_prev, p, ops, Nx, Ny, dt, rho, F_u, F_v)
+            Fu = Fu_2; Fv = Fv_2
+            u_star, v_star = bdf2.intermediate_velocity(u, u_prev, v, v_prev, p, ops, Nx, Ny, dt, rho, Fu_2, Fv_2)
         end
         apply_vel_derichlet!(u_star, v_star, U_lid)
 
         u_prev .= u
         v_prev .= v
 
-        u, v, p = solver(u_star, v_star, p, ops, grid, rho, dt)
+        u, v, p = time_discretization == "first_order" ? solver(u_star, v_star, p, ops, grid, rho, dt, Fu, Fv) : 
+                                                        solver(u_star, v_star, p, ops, grid, rho, dt, Fu, Fv; u_prev=u_prev, v_prev=v_prev)
         apply_vel_derichlet!(u, v, U_lid)
         
         # Debug

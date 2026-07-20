@@ -5,8 +5,8 @@ module bdf2
 
     # BDF2:
     #   (I - (2dt/3)*nu*L) * u* = (4/3)u^n - (1/3)u^{n-1}
-    #                             - (2dt/3)*[conv(u^n) + (1/rho)*grad(p^n)]
-    function intermediate_velocity(u, u_prev, v, v_prev, p, ops, Nx, Ny, dt, rho, F_u, F_v)
+    #                             - (2dt/3)*[conv(u^n) + grad(p^n)]
+    function intermediate_velocity(u, u_prev, v, v_prev, p, ops, Nx, Ny, dt, F_u, F_v, F, Ru, Rv)
         u_vec      = u[:]
         u_prev_vec = u_prev[:]
         v_vec      = v[:]
@@ -30,8 +30,8 @@ module bdf2
          max.(v_vec, 0) .* (ops.Dy_v_b * v_vec) .+ min.(v_vec, 0) .* (ops.Dy_v_f * v_vec)
 
         dt2 = 2dt / 3
-        rhs_u = (4/3) .* u_vec - (1/3) .* u_prev_vec - dt2 .* (conv_u + (1/rho) .* (ops.GRAD_X * p_vec))
-        rhs_v = (4/3) .* v_vec - (1/3) .* v_prev_vec - dt2 .* (conv_v + (1/rho) .* (ops.GRAD_Y * p_vec))
+        rhs_u = (4/3) .* u_vec - (1/3) .* u_prev_vec - dt2 .* (conv_u +  ops.GRAD_X * p_vec - Ru * F[:, 1])
+        rhs_v = (4/3) .* v_vec - (1/3) .* v_prev_vec - dt2 .* (conv_v + ops.GRAD_Y * p_vec - Rv * F[:, 2])
 
         u_star_vec = F_u \ rhs_u
         v_star_vec = F_v \ rhs_v

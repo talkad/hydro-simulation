@@ -4,8 +4,8 @@ module first_order
 
 
     # Backward Euler
-    #   (I - dt*nu*L) * u* = u^n - dt*conv(u^n) - (dt/rho)*grad(p^n)
-    function intermediate_velocity(u, v, p, ops, Nx, Ny, dt, rho, F_u, F_v)
+    #   (I - dt*nu*L) * u* = u^n - dt*conv(u^n) - grad(p^n)
+    function intermediate_velocity(u, v, p, ops, Nx, Ny, dt, F_u, F_v)
         u_vec = u[:]
         v_vec = v[:]
         p_vec = p[:] 
@@ -25,8 +25,8 @@ module first_order
         # conv_v = max.(u_on_v, 0) .* (ops.Dx_v_b * v_vec) .+ min.(u_on_v, 0) .* (ops.Dx_v_f * v_vec) .+
         #  max.(v_vec, 0) .* (ops.Dy_v_b * v_vec) .+ min.(v_vec, 0) .* (ops.Dy_v_f * v_vec)
 
-        rhs_u = u_vec - dt * conv_u - (dt / rho) * (ops.GRAD_X * p_vec)
-        rhs_v = v_vec - dt * conv_v - (dt / rho) * (ops.GRAD_Y * p_vec)
+        rhs_u = u_vec - dt * (conv_u + ops.GRAD_X * p_vec)
+        rhs_v = v_vec - dt * (conv_v + ops.GRAD_Y * p_vec)
 
         u_star_vec = F_u \ rhs_u
         v_star_vec = F_v \ rhs_v

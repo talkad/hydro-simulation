@@ -1,1 +1,1 @@
-frames/*.gif filter=lfs diff=lfs merge=lfs -text
+gifs/*.gif filter=lfs diff=lfs merge=lfs -text

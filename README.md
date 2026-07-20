@@ -55,6 +55,6 @@ Advance to next time step
 
 ## Visualization
 
-<p align="center"> <img src="gifs/u.gif" width="600" alt="Horizontal velocity field"> </p>
+<p align="center"> <img src="gifs/u.gif" width="1000" alt="Horizontal velocity field"> </p>
 
-<p align="center"> <img src="gifs/v.gif" width="600" alt="Vertical velocity field"> </p>
+<p align="center"> <img src="gifs/v.gif" width="1000" alt="Vertical velocity field"> </p>
